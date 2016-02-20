@@ -44,6 +44,18 @@ public class Json2SSTable {
         final String schema = FileUtils.readFileToString(new File(args[0]), "UTF-8");
         final String outputPath = args[1];
         
+        // Set cassandra configuration file
+        if (args.length >= 3) {
+            final File cassandraConfig = new File(args[2]);
+            if (!cassandraConfig.exists()) {
+                throw new IllegalArgumentException("The supplied Cassandra configuration file '" + args[2] + "' can not be found or is not readable!");
+            }
+            System.setProperty("cassandra.config", cassandraConfig.toURI().toString());
+        } else if (System.getProperty("cassandra.config") == null) {
+            System.setProperty("cassandra.config", "file:///etc/cassandra/cassandra.yaml");
+        }
+        System.err.println("Using cassandra config file '" + System.getProperty("cassandra.config") + "'");
+        
         final CFMetaData tableMetaData = Json2SSTable.parseSchema(schema);
         final List<String> columnNames = new ArrayList<>();
         
