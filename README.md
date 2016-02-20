@@ -1,6 +1,8 @@
 Json to Apache Cassandra SSTable converter
 ==========================================
 
+[![GitHub license](https://img.shields.io/github/license/PubGrade/Json2SSTable.svg?style=plastic)]()
+
 The Json2SSTable tool speeds up the import of JSON data into Apache Cassandra.
 It reads the JSON data from STDIN, one JSON object per line.
 The attribute names of the JSON objects must exactly match the column names of the target Cassandra table.
