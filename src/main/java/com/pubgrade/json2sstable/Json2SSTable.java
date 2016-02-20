@@ -24,6 +24,7 @@ import org.apache.cassandra.db.marshal.ReversedType;
 import org.apache.cassandra.db.marshal.SetType;
 import org.apache.cassandra.db.marshal.TimestampType;
 import org.apache.cassandra.exceptions.InvalidRequestException;
+import org.apache.cassandra.exceptions.RequestValidationException;
 import org.apache.cassandra.io.sstable.CQLSSTableWriter;
 import org.apache.cassandra.service.ClientState;
 import org.apache.commons.io.FileUtils;
@@ -34,7 +35,8 @@ import org.json.simple.JSONValue;
 import org.json.simple.parser.ParseException;
 
 /**
- *
+ * This executable class reads one Json object per line from STDIN and creates SSTable data from it that can be imported into Apache Cassandra.
+ * 
  * @author Dennis Birkholz <birkholz@pubgrade.com>
  */
 public class Json2SSTable {
@@ -55,43 +57,40 @@ public class Json2SSTable {
                 + " VALUES (?" + StringUtils.repeat(",?", columnNames.size()-1) + ");"
         ;
         
-        final CQLSSTableWriter writer = CQLSSTableWriter
+        try (CQLSSTableWriter writer = CQLSSTableWriter
                 .builder()
                 .inDirectory(outputPath)
                 .forTable(schema)
                 .using(query)
-                .build()
-        ;
-        
-        final Scanner scanner = new Scanner(System.in, "UTF-8");
-        
-        long counter = 0;
-        
-        while (scanner.hasNextLine()) {
-            counter++;
-            final Object parsed = JSONValue.parseWithException(scanner.nextLine());
+                .build()) {
+            final Scanner scanner = new Scanner(System.in, "UTF-8");
             
-            if (!(parsed instanceof JSONObject)) {
-                System.err.println("Parsed object is not json: " + parsed);
-                continue;
-            }
+            long counter = 0;
             
-            final JSONObject json = (JSONObject)parsed;
-            final Map<String,Object> row = new HashMap<>();
-            
-            for (final ColumnDefinition column : tableMetaData.allColumns()) {
-                final String columnName = column.name.toString();
-                row.put(columnName, convertObject(column.type, json.get(columnName)));
-            }
-            
-            writer.addRow(row);
-            
-            if ((counter % 1000) == 0) {
-                System.err.println("Imported " + counter + " rows.");
+            while (scanner.hasNextLine()) {
+                counter++;
+                final Object parsed = JSONValue.parseWithException(scanner.nextLine());
+                
+                if (!(parsed instanceof JSONObject)) {
+                    System.err.println("Parsed object is not json: " + parsed);
+                    continue;
+                }
+                
+                final JSONObject json = (JSONObject)parsed;
+                final Map<String,Object> row = new HashMap<>();
+                
+                for (final ColumnDefinition column : tableMetaData.allColumns()) {
+                    final String columnName = column.name.toString();
+                    row.put(columnName, convertObject(column.type, json.get(columnName)));
+                }
+                
+                writer.addRow(row);
+                
+                if ((counter % 1000) == 0) {
+                    System.err.println("Imported " + counter + " rows.");
+                }
             }
         }
-        
-        writer.close();
     }
     
     /**
@@ -139,6 +138,12 @@ public class Json2SSTable {
         return original;
     }
     
+    /**
+     * Get the meta data (column definitions) for the target table.
+     * 
+     * @param query The CREATE TABLE statement for the table the Json data should be put into.
+     * @return The table's meta data
+     */
     private static CFMetaData parseSchema(String query) {
         try {
             ClientState state = ClientState.forInternalCalls();
@@ -151,7 +156,7 @@ public class Json2SSTable {
             }
 
             return CreateTableStatement.class.cast(stmt).getCFMetaData();
-        } catch (Exception e) {
+        } catch (RequestValidationException | IllegalArgumentException e) {
             throw new RuntimeException(e);
         }
     }
