@@ -113,7 +113,11 @@ public class Json2SSTable {
      * @return Column value converted to a class usable for the column type
      */
     private static Object convertObject(final AbstractType type, final Object original) {
-        if (type instanceof ReversedType) {
+        if ((original instanceof JSONArray) && ((JSONArray)original).isEmpty()) {
+            return null;
+        }
+        
+        else if (type instanceof ReversedType) {
             return convertObject(((ReversedType)type).baseType, original);
         }
         
