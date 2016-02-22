@@ -42,7 +42,9 @@ import org.json.simple.parser.ParseException;
 public class Json2SSTable {
     public static void main(String[] args) throws SQLException, IOException, InvalidRequestException, ParseException {
         final String schema = FileUtils.readFileToString(new File(args[0]), "UTF-8");
-        final String outputPath = args[1];
+        final File outputPath = new File(args[1]);
+        outputPath.mkdirs();
+        System.err.println("Writing SSTables to '" + outputPath.getAbsolutePath() + "'");
         
         // Set cassandra configuration file
         if (args.length >= 3) {
