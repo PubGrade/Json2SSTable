@@ -71,6 +71,8 @@ public class Json2SSTable {
                 + " VALUES (?" + StringUtils.repeat(",?", columnNames.size()-1) + ");"
         ;
         
+        long counter = 0;
+        
         try (CQLSSTableWriter writer = CQLSSTableWriter
                 .builder()
                 .inDirectory(outputPath)
@@ -78,8 +80,6 @@ public class Json2SSTable {
                 .using(query)
                 .build()) {
             final Scanner scanner = new Scanner(System.in, "UTF-8");
-            
-            long counter = 0;
             
             while (scanner.hasNextLine()) {
                 counter++;
@@ -101,10 +101,12 @@ public class Json2SSTable {
                 writer.addRow(row);
                 
                 if ((counter % 1000) == 0) {
-                    System.err.println("Imported " + counter + " rows.");
+                    System.err.print("\rImported " + counter + " rows...");
                 }
             }
         }
+        
+        System.err.println("\rFinished importing " + counter + " rows.");
     }
     
     /**
